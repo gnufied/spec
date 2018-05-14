@@ -330,6 +330,9 @@ service Controller {
 
   rpc ListSnapshots (ListSnapshotsRequest)
     returns (ListSnapshotsResponse) {}
+
+  rpc ControllerExpandVolume (ControllerExpandVolumeRequest)
+    returns (ControllerExpandVolumeResponse) {}
 }
 
 service Node {
@@ -344,6 +347,9 @@ service Node {
 
   rpc NodeUnpublishVolume (NodeUnpublishVolumeRequest)
     returns (NodeUnpublishVolumeResponse) {}
+
+  rpc NodeExpandVolume(NodeExpandVolumeRequest)
+    returns (NodeExpandVolumeResponse) {}
 
   // NodeGetId is being deprecated in favor of NodeGetInfo and will be
   // removed in CSI 1.0. Existing drivers, however, may depend on this
@@ -1351,6 +1357,7 @@ message ControllerServiceCapability {
       // with the snapshot_id as the filter to query whether the
       // uploading process is complete or not.
       LIST_SNAPSHOTS = 6;
+      EXPAND_VOLUME = 7;
     }
 
     Type type = 1;
@@ -1597,6 +1604,49 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 |-----------|-----------|-------------|-------------------|
 | Invalid `starting_token` | 10 ABORTED | Indicates that `starting_token` is not valid. | Caller SHOULD start the `ListSnapshots` operation again with an empty `starting_token`. |
 
+
+#### `ControllerExpandVolume`
+
+A Controller plugin MUST implement this RPC call if plugin has `EXPAND_VOLUME` capability. 
+This RPC allows the CO to expand size of underlying volume.
+`ControllerExpandVolume` RPC call MUST be idempotent and if size of underlying
+volume already meets requested capacity, the plugin MUST respond with
+successfull response.
+
+
+```protobuf
+message ControllerExpandVolumeRequest {
+  // The ID of the volume to expand. This field is REQUIRED.
+  string volume_id = 1;
+
+  // This field is REQUIRED. This allows CO to specify the
+  // capacity requirements of the volume after expansion.
+  CapacityRange capacity_range = 2;
+
+  // Secrets required by the plugin for expanding the volume.
+  // This field is OPTIONAL.
+  map<string,string> controller_volume_expand_secrets = 3;
+}
+
+message ControllerExpandVolumeResponse {
+  // Capacity of volume after expansion.
+  // This field is REQUIRED
+  int64 capacity_bytes = 1;
+
+  // Whether file system expansion is required for the volume.
+  // This field REQUIRED.
+  bool fs_resize_required = 2;
+}
+```
+
+##### ControllerExpandVolume Errors
+
+| Condition | gRPC Code | Description | Recovery Behavior |
+|-----------|-----------|-------------|-------------------|
+| Volume does not exist | 5 NOT FOUND | Indicates that a volume corresponding to the specified volume_id does not exist. | Caller MUST verify that the volume_id is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
+| Operation pending for volume | 10 ABORTED | Indicates that there is already a resize operation pending for the specified volume. In general the Cluster Orchestrator(CO) is responsible for ensuring that there is no more than one call "in-flight" per volume at a given time. However in some circumstances, the CO MAY lose state and MAY issue multiple calls simultaneously for the same volume. The Plugin, SHOULD handle this as gracefully as possible, and MAY return this error code to reject secondary calls| Caller SHOULD ensure that there are no other calls pending for the specified volume, and then retry with exponential back off. |
+| Unsupported `capacity_range` | 11 OUT_OF_RANGE | Indicates that the capacity range is not allowed by the Plugin. More human-readable information MAY be provided in the gRPC `status.message` field. | Caller MUST fix the capacity range before retrying. |
+| Call not implemented | 12 UNIMPLEMENTED | ControllerExpandVolume call is not implemented by the plugin or disabled in the Plugin's current mode of operation. | Caller MUST NOT retry. Caller MAY call `ControllerGetCapabilities` or `NodeGetCapabilities` to discover Plugin capabilities. |
 
 #### RPC Interactions
 
@@ -1968,6 +2018,7 @@ message NodeServiceCapability {
     enum Type {
       UNKNOWN = 0;
       STAGE_UNSTAGE_VOLUME = 1;
+      EXPAND_VOLUME = 2;
     }
 
     Type type = 1;
@@ -1983,7 +2034,6 @@ message NodeServiceCapability {
 ##### NodeGetCapabilities Errors
 
 If the plugin is unable to complete the NodeGetCapabilities call successfully, it MUST return a non-ok gRPC code in the gRPC status.
-
 
 #### `NodeGetInfo`
 
@@ -2039,6 +2089,42 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 Condition | gRPC Code | Description | Recovery Behavior
 | --- | --- | --- | --- |
 | Call not implemented | 12 UNIMPLEMENTED | NodeGetInfo call is not implemented by the plugin or disabled in the Plugin's current mode of operation. | Caller MUST NOT retry. Caller MAY call `ControllerGetCapabilities` or `NodeGetCapabilities` to discover Plugin capabilities. |
+
+
+#### `NodeExpandVolume`
+
+A Node Plugin MUST implement this RPC call if it has `EXPAND_VOLUME` node capability.
+This RPC call allows CO to expand volume on the node.
+
+```protobuf
+message NodeExpandVolumeRequest {
+  // The ID of the volume. This field is REQUIRED.
+  string volume_id = 1;
+
+  // The path on which volume is available.
+  // This field is REQUIRED.
+  string volume_path = 2;
+
+  // This field is OPTIONAL. This allows CO to specify the
+  // capacity requirements of the volume after expansion.
+  CapacityRange capacity_range = 3;
+}
+
+message NodeExpandVolumeResponse {
+  // The capacity of the volume in bytes.
+  // This field is OPTIONAL.
+  int64 capacity_bytes = 1;
+}
+```
+
+##### NodeExpandVolume Errors
+
+| Condition             | gRPC code | Description           | Recovery Behavior                 |
+|-----------------------|-----------|-----------------------|-----------------------------------|
+| Volume does not exist | 5 NOT FOUND | Indicates that a volume corresponding to the specified volume_id does not exist. | Caller MUST verify that the volume_id is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
+| Operating pending for Volume | 10 ABORTED | Indicates that there is already a expand operation pending for the specified volume. In general the Cluster Orchestrator(CO) is responsible for ensuring that there is no more than one call "in-flight" per volume at a given time. However in some circumstances, the CO MAY lose state and MAY issue multiple calls simultaneously for the same volume. The Plugin, SHOULD handle this as gracefully as possible, and MAY return this error code to reject secondary calls. | Caller SHOULD ensure that there are no other calls pending for the specified volume, and then retry with exponential back off. |
+| Unsupported capacity_range | 11 OUT_OF_RANGE | Indicates that the capacity range is not allowed by the Plugin. More human-readable information MAY be provided in the gRPC status.message field. | Caller MUST fix the capacity range before retrying. |
+| Call not implemented | 12 UNIMPLEMENTED | NodeExpandVolume call is not implemented by the plugin or disabled in the Plugin's current mode of operation. | Caller MUST NOT retry. Caller MAY call ControllerGetCapabilities or NodeGetCapabilities to discover Plugin capabilities. |
 
 
 ## Protocol
