@@ -1609,9 +1609,13 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 
 A Controller plugin MUST implement this RPC call if plugin has `EXPAND_VOLUME` capability. 
 This RPC allows the CO to expand size of underlying volume.
-`ControllerExpandVolume` RPC call MUST be idempotent and if size of underlying
-volume already meets requested capacity, the plugin MUST respond with
-successfull response.
+
+This call can be made by the CO during any time in the lifecycle of the volume after creation.
+If plugin has `EXPAND_VOLUME` node capability, then `NodeExpandVolume` MUST be called after `ControllerExpandVolume` has completed.
+If volume can not be expanded when in-use - plugin should return `FAILED_PRECONDITION` error and CO should retry only after calling `ControllerUnpublishVolume` if plugin has `PUBLISH_UNPUBLISH_VOLUME` controller capability.
+
+
+`ControllerExpandVolume` RPC call MUST be idempotent and if size of underlying volume already meets requested capacity, the plugin MUST respond with successfull response.
 
 
 ```protobuf
@@ -1643,6 +1647,7 @@ message ControllerExpandVolumeResponse {
 
 | Condition | gRPC Code | Description | Recovery Behavior |
 |-----------|-----------|-------------|-------------------|
+| Volume in use | 9 FAILED_PRECONDITION | Indicates that the volume corresponding to the specified `volume_id` could not be expanded because it is in use. | Caller SHOULD ensure that volume is not in-use and retry with exponential back off. |
 | Volume does not exist | 5 NOT FOUND | Indicates that a volume corresponding to the specified volume_id does not exist. | Caller MUST verify that the volume_id is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
 | Operation pending for volume | 10 ABORTED | Indicates that there is already a resize operation pending for the specified volume. In general the Cluster Orchestrator(CO) is responsible for ensuring that there is no more than one call "in-flight" per volume at a given time. However in some circumstances, the CO MAY lose state and MAY issue multiple calls simultaneously for the same volume. The Plugin, SHOULD handle this as gracefully as possible, and MAY return this error code to reject secondary calls| Caller SHOULD ensure that there are no other calls pending for the specified volume, and then retry with exponential back off. |
 | Unsupported `capacity_range` | 11 OUT_OF_RANGE | Indicates that the capacity range is not allowed by the Plugin. More human-readable information MAY be provided in the gRPC `status.message` field. | Caller MUST fix the capacity range before retrying. |
@@ -2096,6 +2101,14 @@ Condition | gRPC Code | Description | Recovery Behavior
 A Node Plugin MUST implement this RPC call if it has `EXPAND_VOLUME` node capability.
 This RPC call allows CO to expand volume on the node.
 
+`NodeExpandVolume` MUST be called after `ControllerExpandVolume` if volume has `EXPAND_VOLUME` controller capability.
+Also `NodeExpandVolume` MUST be called only on a volume which is already published by controller if controller has `PUBLISH_UNPUBLISH_VOLUME` capability.
+`NodeExpandVolume` expects volume to be available on specified `volume_path` and `NodeExpandVolume` itself will not implicitly call `NodeStageVolume` or `NodePublishVolume`.
+
+
+`NodeExpandVolume` may also be called to perform online expansion of in-use Volume.
+A plugin may return `FAILED_PRECONDITION` error if underlying volume can not be expanded when in-use.
+
 ```protobuf
 message NodeExpandVolumeRequest {
   // The ID of the volume. This field is REQUIRED.
@@ -2121,6 +2134,7 @@ message NodeExpandVolumeResponse {
 
 | Condition             | gRPC code | Description           | Recovery Behavior                 |
 |-----------------------|-----------|-----------------------|-----------------------------------|
+| Volume in use | 9 FAILED_PRECONDITION | Indicates that the volume corresponding to the specified `volume_id` could not be expanded because it is in use. | Caller SHOULD ensure that volume is not in-use and retry with exponential back off. |
 | Volume does not exist | 5 NOT FOUND | Indicates that a volume corresponding to the specified volume_id does not exist. | Caller MUST verify that the volume_id is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
 | Operating pending for Volume | 10 ABORTED | Indicates that there is already a expand operation pending for the specified volume. In general the Cluster Orchestrator(CO) is responsible for ensuring that there is no more than one call "in-flight" per volume at a given time. However in some circumstances, the CO MAY lose state and MAY issue multiple calls simultaneously for the same volume. The Plugin, SHOULD handle this as gracefully as possible, and MAY return this error code to reject secondary calls. | Caller SHOULD ensure that there are no other calls pending for the specified volume, and then retry with exponential back off. |
 | Unsupported capacity_range | 11 OUT_OF_RANGE | Indicates that the capacity range is not allowed by the Plugin. More human-readable information MAY be provided in the gRPC status.message field. | Caller MUST fix the capacity range before retrying. |
