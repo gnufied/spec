@@ -1642,7 +1642,7 @@ message ControllerExpandVolumeResponse {
   int64 capacity_bytes = 1;
 
   // Whether file system expansion is required for the volume.
-  // This field REQUIRED.
+  // This field is REQUIRED.
   bool fs_resize_required = 2;
 }
 ```
@@ -2106,9 +2106,17 @@ A Node Plugin MUST implement this RPC call if it has `EXPAND_VOLUME` node capabi
 This RPC call allows CO to expand volume on the node.
 
 `NodeExpandVolume` MUST be called after `ControllerExpandVolume` if volume has `EXPAND_VOLUME` controller capability.
-Also `NodeExpandVolume` MUST be called only on a volume which is already published by controller if controller has `PUBLISH_UNPUBLISH_VOLUME` capability.
-`NodeExpandVolume` expects volume to be available on specified `volume_path` and `NodeExpandVolume` itself will not implicitly call `NodeStageVolume` or `NodePublishVolume`.
 
+If plugin has `PUBLISH_UNPUBLISH_VOLUME` controller capability:
+* `NodeExpandVolume` MUST be called after calling `ControllerPublishVolume`.
+* If plugin has `STAGE_UNSTAGE_VOLUME` node capability then `NodeExpandVolume` MAY be called after `NodeStageVolume`.
+* If plugin does not have `STAGE_UNSTAGE_VOLUME` node capability then `NodeExpandVolume` MAY be called after `NodePublishVolume`.
+
+If plugin does not have `PUBLISH_UNPUBLISH_VOLUME` controller capability:
+* `NodeExpandVolume` MAY be called after `NodeStageVolume` if plugin has `STAGE_UNSTAGE_VOLUME` node capability.
+* If plugin does not have `STAGE_UNSTAGE_VOLUME` node capability then `NodeExpandVolume` MAY be called after `NodePublishVolume`.
+
+`NodeExpandVolume` expects volume to be available on specified `volume_path` and `NodeExpandVolume` itself will not implicitly call `NodeStageVolume` or `NodePublishVolume`.
 
 `NodeExpandVolume` may also be called to perform online expansion of in-use Volume.
 A plugin may return `FAILED_PRECONDITION` error if underlying volume can not be expanded when in-use.

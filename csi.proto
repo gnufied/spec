@@ -935,7 +935,7 @@ message ControllerExpandVolumeResponse {
   int64 capacity_bytes = 1;
 
   // Whether file system expansion is required for the volume.
-  // This field REQUIRED.
+  // This field is REQUIRED.
   bool fs_resize_required = 2;
 }
 message NodeStageVolumeRequest {
