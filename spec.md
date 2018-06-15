@@ -1612,7 +1612,11 @@ This RPC allows the CO to expand size of underlying volume.
 
 This call can be made by the CO during any time in the lifecycle of the volume after creation.
 If plugin has `EXPAND_VOLUME` node capability, then `NodeExpandVolume` MUST be called after `ControllerExpandVolume` has completed.
-If volume can not be expanded when in-use - plugin should return `FAILED_PRECONDITION` error and CO should retry only after calling `ControllerUnpublishVolume` if plugin has `PUBLISH_UNPUBLISH_VOLUME` controller capability.
+If volume can not be expanded when in-use - plugin should return `FAILED_PRECONDITION` error and CO should retry only after:
+
+* Calling `ControllerUnpublishVolume` - if plugin has `PUBLISH_UNPUBLISH_VOLUME` controller capability.
+* Calling `NodeUnstageVolume` and `NodeUnpublishVolume` - if plugin does not have `PUBLISH_UNPUBLISH_VOLUME` controller capability and node has `STAGE_UNSTAGE_VOLUME` capability.
+* Calling `NodeUnpublishVolume` - if plugin does not have `PUBLISH_UNPUBLISH_VOLUME` controller capability and node does not have `STAGE_UNSTAGE_VOLUME` capability.
 
 
 `ControllerExpandVolume` RPC call MUST be idempotent and if size of underlying volume already meets requested capacity, the plugin MUST respond with successfull response.
