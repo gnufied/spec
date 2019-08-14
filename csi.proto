@@ -1042,6 +1042,15 @@ message ControllerExpandVolumeRequest {
   // Secrets required by the plugin for expanding the volume.
   // This field is OPTIONAL.
   map<string, string> secrets = 3 [(csi_secret) = true];
+
+  // Volume capability describing how the CO intends to use this volume.
+  // This allows SP to determine if volume is being used as a block
+  // device or mounted file system. For example - if volume is
+  // being used as a block device - the SP MAY choose to skip calling
+  // NodeExpandVolume on the node by setting node_expansion_required
+  // to false in ControllerExpandVolumeResponse.
+  // This is an OPTIONAL field.
+  VolumeCapability volume_capability = 4;
 }
 
 message ControllerExpandVolumeResponse {
@@ -1303,6 +1312,20 @@ message NodeExpandVolumeRequest {
   // plugin MAY expand the volume to its maximum capacity.
   // This field is OPTIONAL.
   CapacityRange capacity_range = 3;
+
+  // Volume capability describing how the CO intends to use this volume.
+  // This allows SP to determine if volume is being used as a block
+  // device or mounted file system. For example - if volume is being
+  // used as a block device the SP MAY choose to skip expanding the
+  // filesystem. If volume_capability is omitted the SP MAY determine
+  // access_type from given volume_path for the volume and perform
+  // node expansion. This is an OPTIONAL field.
+  VolumeCapability volume_capability = 4;
+
+  // Indicates that volume has been published to node as readonly.
+  // If omitted SP may use volume_path to determine readonly status of
+  // volume. This is an OPTIONAL field.
+  bool readonly = 5;
 }
 
 message NodeExpandVolumeResponse {

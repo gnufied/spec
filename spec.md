@@ -1821,6 +1821,15 @@ message ControllerExpandVolumeRequest {
   // Secrets required by the plugin for expanding the volume.
   // This field is OPTIONAL.
   map<string, string> secrets = 3 [(csi_secret) = true];
+
+  // Volume capability describing how the CO intends to use this volume.
+  // This allows SP to determine if volume is being used as a block
+  // device or mounted file system. For example - if volume is
+  // being used as a block device - the SP MAY choose to skip calling
+  // NodeExpandVolume on the node by setting node_expansion_required
+  // to false in ControllerExpandVolumeResponse.
+  // This is an OPTIONAL field.
+  VolumeCapability volume_capability = 4;
 }
 
 message ControllerExpandVolumeResponse {
@@ -1838,6 +1847,7 @@ message ControllerExpandVolumeResponse {
 
 | Condition | gRPC Code | Description | Recovery Behavior |
 |-----------|-----------|-------------|-------------------|
+| Exceeds capabilities | 3 INVALID_ARGUMENT | Indicates that CO has specified capabilities not supported by the volume. | Caller MAY verify volume capabilities by calling ValidateVolumeCapabilities and retry with matching capabilities. |
 | Volume does not exist | 5 NOT FOUND | Indicates that a volume corresponding to the specified volume_id does not exist. | Caller MUST verify that the volume_id is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
 | Volume in use | 9 FAILED_PRECONDITION | Indicates that the volume corresponding to the specified `volume_id` could not be expanded because it is currently published on a node but the plugin does not have ONLINE expansion capability. | Caller SHOULD ensure that volume is not published and retry with exponential back off. |
 | Unsupported `capacity_range` | 11 OUT_OF_RANGE | Indicates that the capacity range is not allowed by the Plugin. More human-readable information MAY be provided in the gRPC `status.message` field. | Caller MUST fix the capacity range before retrying. |
@@ -2315,6 +2325,8 @@ Otherwise `NodeExpandVolume` MUST be called after successful `NodePublishVolume`
 
 If a plugin only supports expansion via the `VolumeExpansion.OFFLINE` capability, then the volume MUST first be taken offline and expanded via `ControllerExpandVolume` (see `ControllerExpandVolume` for more details), and then node-staged or node-published before it can be expanded on the node via `NodeExpandVolume`.
 
+When a Node Plugin does not support expanding a volume that is published as `readonly` the operation must return the `FAILED_PRECONDITION` error code and MAY include meaningful human-readable information in the `status.message` field.
+
 ```protobuf
 message NodeExpandVolumeRequest {
   // The ID of the volume. This field is REQUIRED.
@@ -2330,6 +2342,20 @@ message NodeExpandVolumeRequest {
   // plugin MAY expand the volume to its maximum capacity.
   // This field is OPTIONAL.
   CapacityRange capacity_range = 3;
+
+  // Volume capability describing how the CO intends to use this volume.
+  // This allows SP to determine if volume is being used as a block
+  // device or mounted file system. For example - if volume is being
+  // used as a block device the SP MAY choose to skip expanding the
+  // filesystem. If volume_capability is omitted the SP MAY determine
+  // access_type from given volume_path for the volume and perform
+  // node expansion. This is an OPTIONAL field.
+  VolumeCapability volume_capability = 4;
+
+  // Indicates that volume has been published to node as readonly.
+  // If omitted SP may use volume_path to determine readonly status of
+  // volume. This is an OPTIONAL field.
+  bool readonly = 5;
 }
 
 message NodeExpandVolumeResponse {
@@ -2342,8 +2368,9 @@ message NodeExpandVolumeResponse {
 
 | Condition             | gRPC code | Description           | Recovery Behavior                 |
 |-----------------------|-----------|-----------------------|-----------------------------------|
+| Exceeds capabilities | 3 INVALID_ARGUMENT | Indicates that CO has specified capabilities not supported by the volume. | Caller MAY verify volume capabilities by calling ValidateVolumeCapabilities and retry with matching capabilities. |
 | Volume does not exist | 5 NOT FOUND | Indicates that a volume corresponding to the specified volume_id does not exist. | Caller MUST verify that the volume_id is correct and that the volume is accessible and has not been deleted before retrying with exponential back off. |
-| Volume in use | 9 FAILED_PRECONDITION | Indicates that the volume corresponding to the specified `volume_id` could not be expanded because it is node-published or node-staged and the underlying filesystem does not support expansion of published or staged volumes. | Caller MUST NOT retry. |
+| Volume in use or readonly | 9 FAILED_PRECONDITION | Indicates that the volume corresponding to the specified `volume_id` could not be expanded because it is published as `readonly` volume or node-published or node-staged and the underlying filesystem does not support expansion of published or staged volumes. | Caller MUST NOT retry. |
 | Unsupported capacity_range | 11 OUT_OF_RANGE | Indicates that the capacity range is not allowed by the Plugin. More human-readable information MAY be provided in the gRPC `status.message` field. | Caller MUST fix the capacity range before retrying. |
 
 ## Protocol
