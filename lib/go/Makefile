@@ -58,7 +58,7 @@ $(PROTOC):
 PROTOC_GEN_GO_PKG := github.com/golang/protobuf/protoc-gen-go
 PROTOC_GEN_GO := protoc-gen-go
 $(PROTOC_GEN_GO): PROTOBUF_PKG := $(dir $(PROTOC_GEN_GO_PKG))
-$(PROTOC_GEN_GO): PROTOBUF_VERSION := v1.3.2
+$(PROTOC_GEN_GO): PROTOBUF_VERSION := v1.3.3
 $(PROTOC_GEN_GO):
 	mkdir -p $(dir $(GOPATH)/src/$(PROTOBUF_PKG))
 	test -d $(GOPATH)/src/$(PROTOBUF_PKG)/.git || git clone https://$(PROTOBUF_PKG) $(GOPATH)/src/$(PROTOBUF_PKG)
@@ -120,7 +120,7 @@ endif
 #   2. Cache the packages.
 #   3. Build the archive file.
 $(CSI_A): $(CSI_GO)
-	go get -v -d ./...
+	go mod download
 	go install ./$(CSI_PKG_SUB)
 	go build -o "$@" ./$(CSI_PKG_SUB)
 
