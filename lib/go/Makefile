@@ -120,9 +120,9 @@ endif
 #   2. Cache the packages.
 #   3. Build the archive file.
 $(CSI_A): $(CSI_GO)
-	go mod download
-	go install ./$(CSI_PKG_SUB)
-	go build -o "$@" ./$(CSI_PKG_SUB)
+	(cd $(CSI_PKG_SUB) && \
+		go install . && \
+		go build -o ../"$@" .)
 
 build: $(CSI_A)
 
