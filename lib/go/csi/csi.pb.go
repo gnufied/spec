@@ -5132,11 +5132,11 @@ var fileDescriptor_9cdb00adce470e01 = []byte{
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
-var _ grpc.ClientConnInterface
+var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion4
 
 // IdentityClient is the client API for Identity service.
 //
@@ -5148,10 +5148,10 @@ type IdentityClient interface {
 }
 
 type identityClient struct {
-	cc grpc.ClientConnInterface
+	cc *grpc.ClientConn
 }
 
-func NewIdentityClient(cc grpc.ClientConnInterface) IdentityClient {
+func NewIdentityClient(cc *grpc.ClientConn) IdentityClient {
 	return &identityClient{cc}
 }
 
@@ -5302,10 +5302,10 @@ type ControllerClient interface {
 }
 
 type controllerClient struct {
-	cc grpc.ClientConnInterface
+	cc *grpc.ClientConn
 }
 
-func NewControllerClient(cc grpc.ClientConnInterface) ControllerClient {
+func NewControllerClient(cc *grpc.ClientConn) ControllerClient {
 	return &controllerClient{cc}
 }
 
@@ -5801,10 +5801,10 @@ type NodeClient interface {
 }
 
 type nodeClient struct {
-	cc grpc.ClientConnInterface
+	cc *grpc.ClientConn
 }
 
-func NewNodeClient(cc grpc.ClientConnInterface) NodeClient {
+func NewNodeClient(cc *grpc.ClientConn) NodeClient {
 	return &nodeClient{cc}
 }
 
