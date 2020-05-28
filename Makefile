@@ -2,6 +2,10 @@ all: build
 
 CSI_SPEC := spec.md
 CSI_PROTO := csi.proto
+## Build go language bindings
+CSI_A := csi.a
+CSI_GO := lib/go/csi/csi.pb.go
+CSI_PKG := lib/go/csi
 
 # This is the target for building the temporary CSI protobuf file.
 #
@@ -32,15 +36,12 @@ build: check
 # If this is not running on Travis-CI then for sake of convenience
 # go ahead and update the language bindings as well.
 ifneq (true,$(TRAVIS))
-build:
-	$(MAKE) -C lib/go
-	$(MAKE) -C lib/cxx
+build: build_cpp build_go
 endif
 
-## Build go language bindings
-CSI_A := csi.a
-CSI_GO := lib/go/csi/csi.pb.go
-CSI_PKG := lib/go/csi
+
+build_cpp:
+	$(MAKE) -C lib/cxx
 
 $(CSI_GO):
 	$(MAKE) -C lib/go csi/csi.pb.go
@@ -50,7 +51,10 @@ $(CSI_A): $(CSI_GO)
 	go install ./$(CSI_PKG)
 	go build -o "$@" ./$(CSI_PKG)
 
+build_go: $(CSI_A)
+
 clean:
+	rm $(CSI_A)
 	$(MAKE) -C lib/go $@
 
 clobber: clean

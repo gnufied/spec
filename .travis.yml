@@ -35,4 +35,4 @@ jobs:
         - make -C lib/go protoc
         - make -C lib/go protoc-gen-go
       script:
-        - make -C lib/go
+        - build_go
