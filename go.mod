@@ -1,4 +1,4 @@
-module github.com/container-storage-interface/spec/lib/go/csi
+module github.com/container-storage-interface/spec
 
 go 1.13
 
