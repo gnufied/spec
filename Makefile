@@ -37,6 +37,19 @@ build:
 	$(MAKE) -C lib/cxx
 endif
 
+## Build go language bindings
+CSI_A := csi.a
+CSI_GO := lib/go/csi/csi.pb.go
+CSI_PKG := lib/go/csi
+
+$(CSI_GO):
+	$(MAKE) -C lib/go csi/csi.pb.go
+
+$(CSI_A): $(CSI_GO)
+	go mod download
+	go install ./$(CSI_PKG)
+	go build -o "$@" ./$(CSI_PKG)
+
 clean:
 	$(MAKE) -C lib/go $@
 

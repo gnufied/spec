@@ -87,7 +87,6 @@ CSI_PKG_ROOT := github.com/container-storage-interface/spec
 CSI_PKG_SUB := $(shell cat $(CSI_PROTO) | sed -n -e 's/^package.\([^;]*\).v[0-9]\+;$$/\1/p'|tr '.' '/')
 CSI_BUILD := $(CSI_PKG_SUB)/.build
 CSI_GO := $(CSI_PKG_SUB)/csi.pb.go
-CSI_A := csi.a
 CSI_GO_TMP := $(CSI_BUILD)/$(CSI_PKG_ROOT)/csi.pb.go
 
 # This recipe generates the go language bindings to a temp area.
@@ -114,21 +113,12 @@ else
 	diff "$@" "$?" > /dev/null 2>&1 || cp -f "$?" "$@"
 endif
 
-# This recipe builds the Go archive from the sources in three steps:
-#
-#   1. Go get any missing dependencies.
-#   2. Cache the packages.
-#   3. Build the archive file.
-$(CSI_A): $(CSI_GO)
-	go mod download
-	go install ./$(CSI_PKG_SUB)
-	go build -o "$@" ./$(CSI_PKG_SUB)
 
-build: $(CSI_A)
+build: $(CSI_GO)
 
 clean:
 	go clean -i ./...
-	rm -rf "$(CSI_A)" "$(CSI_GO)" "$(CSI_BUILD)"
+	rm -rf "$(CSI_GO)" "$(CSI_BUILD)"
 
 clobber: clean
 	rm -fr "$(PROTOC)" "$(PROTOC_GEN_GO)" "$(CSI_PKG_SUB)"
