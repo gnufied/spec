@@ -2091,6 +2091,12 @@ message NodeStageVolumeRequest {
   // This field is OPTIONAL and MUST match the volume_context of the
   // volume identified by `volume_id`.
   map<string, string> volume_context = 6;
+
+  // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
+  // this field then SP MUST ensure that volume is mounted with
+  // provided volume_mount_group.
+  // This is a OPTIONAL field.
+  string volume_mount_group = 7;
 }
 
 message NodeStageVolumeResponse {
@@ -2241,6 +2247,12 @@ message NodePublishVolumeRequest {
   // This field is OPTIONAL and MUST match the volume_context of the
   // volume identified by `volume_id`.
   map<string, string> volume_context = 8;
+
+  // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
+  // this field then SP MUST ensure that volume is mounted with
+  // provided volume_mount_group.
+  // This is a OPTIONAL field.
+  string volume_mount_group = 9;
 }
 
 message NodePublishVolumeResponse {
@@ -2434,6 +2446,10 @@ message NodeServiceCapability {
       // Note that, for alpha, `VolumeCondition` is intended to be
       // informative for humans only, not for automation.
       VOLUME_CONDITION = 4 [(alpha_enum_value) = true];
+      // Indicates that Node service supports mounting volumes
+      // with provider volume group identifier during node stage
+      // or node publish RPC calls.
+      VOLUME_MOUNT_GROUP = 5 [(alpha_enum_value) = true];
     }
 
     Type type = 1;
