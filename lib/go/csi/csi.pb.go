@@ -3623,8 +3623,10 @@ type NodeStageVolumeRequest struct {
 	VolumeContext map[string]string `protobuf:"bytes,6,rep,name=volume_context,json=volumeContext,proto3" json:"volume_context,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// If SP has VOLUME_MOUNT_GROUP node capability and CO provides
 	// this field then SP MUST ensure that volume is mounted with
-	// provided volume_mount_group.
-	// This is a OPTIONAL field.
+	// provided volume_mount_group and all files and directories
+	// within the volume are readable and writable by the provided
+	// volume_mount_group.
+	// This is an OPTIONAL field.
 	VolumeMountGroup     string   `protobuf:"bytes,7,opt,name=volume_mount_group,json=volumeMountGroup,proto3" json:"volume_mount_group,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -3866,8 +3868,13 @@ type NodePublishVolumeRequest struct {
 	VolumeContext map[string]string `protobuf:"bytes,8,rep,name=volume_context,json=volumeContext,proto3" json:"volume_context,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// If SP has VOLUME_MOUNT_GROUP node capability and CO provides
 	// this field then SP MUST ensure that volume is mounted with
-	// provided volume_mount_group.
-	// This is a OPTIONAL field.
+	// provided volume_mount_group and all files and directories
+	// within the volume are readable and writable by the provided
+	// volume_mount_group.
+	// If NodeStageVolume was previously called with volume_mount_group
+	// CO must ensure that NodePublishVolume uses the same
+	// volume_mount_group for the same volume_id.
+	// This is an OPTIONAL field.
 	VolumeMountGroup     string   `protobuf:"bytes,9,opt,name=volume_mount_group,json=volumeMountGroup,proto3" json:"volume_mount_group,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

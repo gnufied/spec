@@ -1227,8 +1227,10 @@ message NodeStageVolumeRequest {
 
   // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
   // this field then SP MUST ensure that volume is mounted with
-  // provided volume_mount_group.
-  // This is a OPTIONAL field.
+  // provided volume_mount_group and all files and directories
+  // within the volume are readable and writable by the provided
+  // volume_mount_group.
+  // This is an OPTIONAL field.
   string volume_mount_group = 7;
 }
 
@@ -1304,8 +1306,13 @@ message NodePublishVolumeRequest {
 
   // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
   // this field then SP MUST ensure that volume is mounted with
-  // provided volume_mount_group.
-  // This is a OPTIONAL field.
+  // provided volume_mount_group and all files and directories
+  // within the volume are readable and writable by the provided
+  // volume_mount_group.
+  // If NodeStageVolume was previously called with volume_mount_group
+  // CO must ensure that NodePublishVolume uses the same
+  // volume_mount_group for the same volume_id.
+  // This is an OPTIONAL field.
   string volume_mount_group = 9;
 }
 

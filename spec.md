@@ -2094,8 +2094,10 @@ message NodeStageVolumeRequest {
 
   // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
   // this field then SP MUST ensure that volume is mounted with
-  // provided volume_mount_group.
-  // This is a OPTIONAL field.
+  // provided volume_mount_group and all files and directories
+  // within the volume are readable and writable by the provided
+  // volume_mount_group.
+  // This is an OPTIONAL field.
   string volume_mount_group = 7;
 }
 
@@ -2250,8 +2252,13 @@ message NodePublishVolumeRequest {
 
   // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
   // this field then SP MUST ensure that volume is mounted with
-  // provided volume_mount_group.
-  // This is a OPTIONAL field.
+  // provided volume_mount_group and all files and directories
+  // within the volume are readable and writable by the provided
+  // volume_mount_group.
+  // If NodeStageVolume was previously called with volume_mount_group
+  // CO must ensure that NodePublishVolume uses the same
+  // volume_mount_group for the same volume_id.
+  // This is an OPTIONAL field.
   string volume_mount_group = 9;
 }
 
@@ -2272,6 +2279,7 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 | Volume published but is incompatible | 6 ALREADY_EXISTS | Indicates that a volume corresponding to the specified `volume_id` has already been published at the specified `target_path` but is incompatible with the specified `volume_capability` or `readonly` flag. | Caller MUST fix the arguments before retrying. |
 | Exceeds capabilities | 9 FAILED_PRECONDITION | Indicates that the CO has exceeded the volume's capabilities because the volume does not have MULTI_NODE capability. | Caller MAY choose to call `ValidateVolumeCapabilities` to validate the volume capabilities, or wait for the volume to be unpublished on the node. |
 | Staging target path not set | 9 FAILED_PRECONDITION | Indicates that `STAGE_UNSTAGE_VOLUME` capability is set but no `staging_target_path` was set. | Caller MUST make sure call to `NodeStageVolume` is made and returns success before retrying with valid `staging_target_path`. |
+| Volume staged with different volume_mount_group | 9 FAILED_PRECONDITION | Indicates that volume with specified `volume_id` was node staged using different `volume_mount_group` on this node and hence can not be node published. | Caller MUST make sure that `NodePublishVolume` is called with same `volume_mount_group` which was used in `NodeStageVolume`. |
 
 
 #### `NodeUnpublishVolume`
