@@ -2196,7 +2196,10 @@ The following table shows what the Plugin SHOULD return when receiving a second 
 | MULTI_NODE     | OK (idempotent) | ALREADY_EXISTS | OK                  | OK                 |
 | Non MULTI_NODE | OK (idempotent) | ALREADY_EXISTS | FAILED_PRECONDITION | FAILED_PRECONDITION|
 
-(`Tn`: target path of the n-th `NodePublishVolume`, `Pn`: other arguments of the n-th `NodePublishVolume` except `secrets`)
+(`Tn`: target path of the n-th `NodePublishVolume`, `Pn`: other arguments of the n-th `NodePublishVolume` except `secrets`).
+
+However if a Plugin does not support `NodePublishVolume` of same volume on same node multiple times with different `volume_mount_group` on different `target_path` it MAY return `FAILED_PRECONDITION` error.
+
 
 ```protobuf
 message NodePublishVolumeRequest {
@@ -2259,7 +2262,7 @@ message NodePublishVolumeRequest {
   // within the volume are readable and writable by the provided
   // volume_mount_group.
   // If NodeStageVolume was previously called with volume_mount_group
-  // CO must ensure that NodePublishVolume uses the same
+  // CO MUST ensure that NodePublishVolume uses the same
   // volume_mount_group for the same volume_id.
   // The value of volume_mount_group should be group_id or group name
   // which would be associated with workload that uses the
@@ -2286,6 +2289,7 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 | Exceeds capabilities | 9 FAILED_PRECONDITION | Indicates that the CO has exceeded the volume's capabilities because the volume does not have MULTI_NODE capability. | Caller MAY choose to call `ValidateVolumeCapabilities` to validate the volume capabilities, or wait for the volume to be unpublished on the node. |
 | Staging target path not set | 9 FAILED_PRECONDITION | Indicates that `STAGE_UNSTAGE_VOLUME` capability is set but no `staging_target_path` was set. | Caller MUST make sure call to `NodeStageVolume` is made and returns success before retrying with valid `staging_target_path`. |
 | Volume staged with different volume_mount_group | 9 FAILED_PRECONDITION | Indicates that volume with specified `volume_id` was node staged using different `volume_mount_group` on this node and hence can not be node published. | Caller MUST make sure that `NodePublishVolume` is called with same `volume_mount_group` which was used in `NodeStageVolume`. |
+| Volume already published with different volume_mount_group | 9 FAILED_PRECONDITION | Indicates that the volume with specified `volume_id` was already node published using different `volume_mount_group` on this node and can not be node published. | Caller MUST ensure that `NodePublishVolume` is called with same `volume_mount_group` on all target paths. |
 
 
 #### `NodeUnpublishVolume`
@@ -2461,8 +2465,13 @@ message NodeServiceCapability {
       // informative for humans only, not for automation.
       VOLUME_CONDITION = 4 [(alpha_enum_value) = true];
       // Indicates that Node service supports mounting volumes
-      // with provider volume group identifier during node stage
+      // with provided volume group identifier during node stage
       // or node publish RPC calls.
+      // It is expected that SP SHOULD use provided volume_mount_group
+      // for mounting the volume and volume should remain readable and
+      // writable by workloads associated with volume_mount_group until
+      // corresponding NodeUnstageVolume or NodeUnpublishVolume is
+      // called.
       VOLUME_MOUNT_GROUP = 5 [(alpha_enum_value) = true];
     }
 

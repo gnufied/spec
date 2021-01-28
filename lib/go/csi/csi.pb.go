@@ -315,8 +315,13 @@ const (
 	// informative for humans only, not for automation.
 	NodeServiceCapability_RPC_VOLUME_CONDITION NodeServiceCapability_RPC_Type = 4
 	// Indicates that Node service supports mounting volumes
-	// with provider volume group identifier during node stage
+	// with provided volume group identifier during node stage
 	// or node publish RPC calls.
+	// It is expected that SP SHOULD use provided volume_mount_group
+	// for mounting the volume and volume should remain readable and
+	// writable by workloads associated with volume_mount_group until
+	// corresponding NodeUnstageVolume or NodeUnpublishVolume is
+	// called.
 	NodeServiceCapability_RPC_VOLUME_MOUNT_GROUP NodeServiceCapability_RPC_Type = 5
 )
 
@@ -3875,7 +3880,7 @@ type NodePublishVolumeRequest struct {
 	// within the volume are readable and writable by the provided
 	// volume_mount_group.
 	// If NodeStageVolume was previously called with volume_mount_group
-	// CO must ensure that NodePublishVolume uses the same
+	// CO MUST ensure that NodePublishVolume uses the same
 	// volume_mount_group for the same volume_id.
 	// The value of volume_mount_group should be group_id or group name
 	// which would be associated with workload that uses the
