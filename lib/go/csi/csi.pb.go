@@ -317,9 +317,9 @@ const (
 	// Indicates that Node service supports mounting volumes
 	// with provided volume group identifier during node stage
 	// or node publish RPC calls.
-	// It is expected that SP SHOULD use provided volume_mount_group
-	// for mounting the volume and volume should remain readable and
-	// writable by workloads associated with volume_mount_group until
+	// SP MUST use provided volume_mount_group for mounting the
+	// volume and volume MUST remain readable and writable by
+	// workloads associated with volume_mount_group until
 	// corresponding NodeUnstageVolume or NodeUnpublishVolume is
 	// called.
 	NodeServiceCapability_RPC_VOLUME_MOUNT_GROUP NodeServiceCapability_RPC_Type = 5
@@ -3631,9 +3631,9 @@ type NodeStageVolumeRequest struct {
 	// provided volume_mount_group and all files and directories
 	// within the volume are readable and writable by the provided
 	// volume_mount_group.
-	// The value of volume_mount_group should be group_id or group name
-	// which would be associated with workload that uses the
-	// volume.
+	// The value of volume_mount_group should be group
+	// identifier (as determined by underlying operating system)
+	// which would be associated with workload that uses the volume.
 	// This is an OPTIONAL field.
 	VolumeMountGroup     string   `protobuf:"bytes,7,opt,name=volume_mount_group,json=volumeMountGroup,proto3" json:"volume_mount_group,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -3882,9 +3882,9 @@ type NodePublishVolumeRequest struct {
 	// If NodeStageVolume was previously called with volume_mount_group
 	// CO MUST ensure that NodePublishVolume uses the same
 	// volume_mount_group for the same volume_id.
-	// The value of volume_mount_group should be group_id or group name
-	// which would be associated with workload that uses the
-	// volume.
+	// The value of volume_mount_group should be group
+	// identifier (as determined by underlying operating system)
+	// which would be associated with workload that uses the volume.
 	// This is an OPTIONAL field.
 	VolumeMountGroup     string   `protobuf:"bytes,9,opt,name=volume_mount_group,json=volumeMountGroup,proto3" json:"volume_mount_group,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
