@@ -1315,6 +1315,12 @@ message NodePublishVolumeRequest {
   // If NodeStageVolume was previously called with volume_mount_group
   // CO MUST ensure that NodePublishVolume uses the same
   // volume_mount_group for the same volume_id.
+  // If Plugin does not have `STAGE_UNSTAGE_VOLUME` capability the CO
+  // MAY call NodePublishVolume with different volume_mount_group and
+  // target_path for same volume_id.
+  // If a Plugin does not support multiple calls of NodePublishVolume
+  // with different volume_mount_group and target_path for same volume
+  // on same node - it MAY return FAILED_PRECONDITION error.
   // The value of volume_mount_group should be group
   // identifier (as determined by underlying operating system)
   // which would be associated with workload that uses the volume.
