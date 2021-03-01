@@ -1225,20 +1225,39 @@ message NodeStageVolumeRequest {
   // volume identified by `volume_id`.
   map<string, string> volume_context = 6;
 
-  // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
-  // this field then SP MUST ensure that volume is mounted with
-  // provided volume_mount_group and all files and directories
-  // within the volume are readable and writable by the provided
-  // volume_mount_group.
-  // The value of volume_mount_group should be group
-  // identifier (as determined by underlying operating system)
-  // which would be associated with workload that uses the volume.
+  // VolumeOwnership specifies ownership of a volume
+  // by a particular workload on the node.
   // This is an OPTIONAL field.
-  string volume_mount_group = 7;
+  VolumeOwnership volume_ownership = 7;
 }
 
 message NodeStageVolumeResponse {
   // Intentionally empty.
+}
+
+message VolumeOwnership {
+  option (alpha_message) = true;
+
+  // If SP has VOLUME_MOUNT_GROUP node capability
+  // and CO provides this field then SP MUST ensure
+  // that the volume_mount_group parameter is passed
+  // as the group identifier to the underlying
+  // operating system mount system call, with the
+  // understanding that this would result in volume
+  // being readable(if published as readonly) or both
+  // readable and writable by said group identifier.
+  // The set of available mount call parameters
+  // and/or mount implementations may vary across
+  // operating systems.
+  //
+  // If Plugin does not support NodePublishVolume with different
+  // volume_mount_group than the one used during NodeStageVolume
+  // then Plugin MAY return FAILED_PRECONDITION error.
+  // Similarly if SP does not support NodePublishVolume of same volume
+  // on same node but with different volume_mount_group it MAY return
+  // FAILED_PRECONDITION error.
+  // This is an OPTIONAL field.
+  string volume_mount_group = 1;
 }
 message NodeUnstageVolumeRequest {
   // The ID of the volume. This field is REQUIRED.
@@ -1307,25 +1326,10 @@ message NodePublishVolumeRequest {
   // volume identified by `volume_id`.
   map<string, string> volume_context = 8;
 
-  // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
-  // this field then SP MUST ensure that volume is mounted with
-  // provided volume_mount_group and all files and directories
-  // within the volume are readable and writable by the provided
-  // volume_mount_group.
-  // If NodeStageVolume was previously called with volume_mount_group
-  // CO MUST ensure that NodePublishVolume uses the same
-  // volume_mount_group for the same volume_id.
-  // If Plugin does not have `STAGE_UNSTAGE_VOLUME` capability the CO
-  // MAY call NodePublishVolume with different volume_mount_group and
-  // target_path for same volume_id.
-  // If a Plugin does not support multiple calls of NodePublishVolume
-  // with different volume_mount_group and target_path for same volume
-  // on same node - it MAY return FAILED_PRECONDITION error.
-  // The value of volume_mount_group should be group
-  // identifier (as determined by underlying operating system)
-  // which would be associated with workload that uses the volume.
+  // VolumeOwnership specifies ownership of a volume
+  // by a particular workload on the node.
   // This is an OPTIONAL field.
-  string volume_mount_group = 9;
+  VolumeOwnership volume_ownership = 9;
 }
 
 message NodePublishVolumeResponse {
@@ -1446,11 +1450,6 @@ message NodeServiceCapability {
       // Indicates that Node service supports mounting volumes
       // with provided volume group identifier during node stage
       // or node publish RPC calls.
-      // SP MUST use provided volume_mount_group for mounting the
-      // volume and volume MUST remain readable and writable by
-      // workloads associated with volume_mount_group until
-      // corresponding NodeUnstageVolume or NodeUnpublishVolume is
-      // called.
       VOLUME_MOUNT_GROUP = 5 [(alpha_enum_value) = true];
     }
 

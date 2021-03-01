@@ -2092,20 +2092,39 @@ message NodeStageVolumeRequest {
   // volume identified by `volume_id`.
   map<string, string> volume_context = 6;
 
-  // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
-  // this field then SP MUST ensure that volume is mounted with
-  // provided volume_mount_group and all files and directories
-  // within the volume are readable and writable by the provided
-  // volume_mount_group.
-  // The value of volume_mount_group should be group
-  // identifier (as determined by underlying operating system)
-  // which would be associated with workload that uses the volume.
+  // VolumeOwnership specifies ownership of a volume
+  // by a particular workload on the node.
   // This is an OPTIONAL field.
-  string volume_mount_group = 7;
+  VolumeOwnership volume_ownership = 7;
 }
 
 message NodeStageVolumeResponse {
   // Intentionally empty.
+}
+
+message VolumeOwnership {
+  option (alpha_message) = true;
+
+  // If SP has VOLUME_MOUNT_GROUP node capability
+  // and CO provides this field then SP MUST ensure
+  // that the volume_mount_group parameter is passed
+  // as the group identifier to the underlying
+  // operating system mount system call, with the
+  // understanding that this would result in volume
+  // being readable(if published as readonly) or both
+  // readable and writable by said group identifier.
+  // The set of available mount call parameters
+  // and/or mount implementations may vary across
+  // operating systems.
+  //
+  // If Plugin does not support NodePublishVolume with different
+  // volume_mount_group than the one used during NodeStageVolume
+  // then Plugin MAY return FAILED_PRECONDITION error.
+  // Similarly if SP does not support NodePublishVolume of same volume
+  // on same node but with different volume_mount_group it MAY return
+  // FAILED_PRECONDITION error.
+  // This is an OPTIONAL field.
+  string volume_mount_group = 1;
 }
 ```
 
@@ -2198,9 +2217,6 @@ The following table shows what the Plugin SHOULD return when receiving a second 
 
 (`Tn`: target path of the n-th `NodePublishVolume`, `Pn`: other arguments of the n-th `NodePublishVolume` except `secrets`).
 
-However if a Plugin does not support `NodePublishVolume` of same volume on same node multiple times with different `volume_mount_group` on different `target_path` it MAY return `FAILED_PRECONDITION` error.
-
-
 ```protobuf
 message NodePublishVolumeRequest {
   // The ID of the volume to publish. This field is REQUIRED.
@@ -2256,25 +2272,10 @@ message NodePublishVolumeRequest {
   // volume identified by `volume_id`.
   map<string, string> volume_context = 8;
 
-  // If SP has VOLUME_MOUNT_GROUP node capability and CO provides
-  // this field then SP MUST ensure that volume is mounted with
-  // provided volume_mount_group and all files and directories
-  // within the volume are readable and writable by the provided
-  // volume_mount_group.
-  // If NodeStageVolume was previously called with volume_mount_group
-  // CO MUST ensure that NodePublishVolume uses the same
-  // volume_mount_group for the same volume_id.
-  // If Plugin does not have `STAGE_UNSTAGE_VOLUME` capability the CO
-  // MAY call NodePublishVolume with different volume_mount_group and
-  // target_path for same volume_id.
-  // If a Plugin does not support multiple calls of NodePublishVolume
-  // with different volume_mount_group and target_path for same volume
-  // on same node - it MAY return FAILED_PRECONDITION error.
-  // The value of volume_mount_group should be group
-  // identifier (as determined by underlying operating system)
-  // which would be associated with workload that uses the volume.
+  // VolumeOwnership specifies ownership of a volume
+  // by a particular workload on the node.
   // This is an OPTIONAL field.
-  string volume_mount_group = 9;
+  VolumeOwnership volume_ownership = 9;
 }
 
 message NodePublishVolumeResponse {
@@ -2294,9 +2295,8 @@ The CO MUST implement the specified error recovery behavior when it encounters t
 | Volume published but is incompatible | 6 ALREADY_EXISTS | Indicates that a volume corresponding to the specified `volume_id` has already been published at the specified `target_path` but is incompatible with the specified `volume_capability` or `readonly` flag. | Caller MUST fix the arguments before retrying. |
 | Exceeds capabilities | 9 FAILED_PRECONDITION | Indicates that the CO has exceeded the volume's capabilities because the volume does not have MULTI_NODE capability. | Caller MAY choose to call `ValidateVolumeCapabilities` to validate the volume capabilities, or wait for the volume to be unpublished on the node. |
 | Staging target path not set | 9 FAILED_PRECONDITION | Indicates that `STAGE_UNSTAGE_VOLUME` capability is set but no `staging_target_path` was set. | Caller MUST make sure call to `NodeStageVolume` is made and returns success before retrying with valid `staging_target_path`. |
-| Volume staged with different volume_mount_group | 9 FAILED_PRECONDITION | Indicates that volume with specified `volume_id` was node staged using different `volume_mount_group` on this node and hence can not be node published. | Caller MUST make sure that `NodePublishVolume` is called with same `volume_mount_group` which was used in `NodeStageVolume`. |
-| Volume already published with different volume_mount_group | 9 FAILED_PRECONDITION | Indicates that the volume with specified `volume_id` was already node published using different `volume_mount_group` on this node and can not be node published. | Caller MUST ensure that `NodePublishVolume` is called with same `volume_mount_group` on all target paths. |
-
+| Volume staged with incompatible `volume_ownership.volume_mount_group`| 9 FAILED_PRECONDITION | Indicates that volume with specified `volume_id` was node-staged using different `volume_ownership.volume_mount_group` on this node and hence can not be node published. More information MAY be provided in `status.message` field.| Caller MUST make sure that `NodePublishVolume` is called with same `volume_ownership.volume_mount_group` which was used in `NodeStageVolume`. |
+| Volume published with incompatible `volume_ownership.volume_mount_group`| 9 FAILED_PRECONDITION | Indicates that volume with specified `volume_id` was already node-published using different `volume_ownership.volume_mount_group` on this node and hence can not be node published. More information MAY be provided in `status.message` field.| Caller MUST make sure that `NodePublishVolume` is called with same `volume_ownership.volume_mount_group` on all target paths. |
 
 #### `NodeUnpublishVolume`
 
@@ -2473,11 +2473,6 @@ message NodeServiceCapability {
       // Indicates that Node service supports mounting volumes
       // with provided volume group identifier during node stage
       // or node publish RPC calls.
-      // SP MUST use provided volume_mount_group for mounting the
-      // volume and volume MUST remain readable and writable by
-      // workloads associated with volume_mount_group until
-      // corresponding NodeUnstageVolume or NodeUnpublishVolume is
-      // called.
       VOLUME_MOUNT_GROUP = 5 [(alpha_enum_value) = true];
     }
 
