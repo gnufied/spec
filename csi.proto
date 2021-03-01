@@ -1238,21 +1238,26 @@ message NodeStageVolumeResponse {
 message VolumeOwnership {
   option (alpha_message) = true;
 
-  // If SP has VOLUME_MOUNT_GROUP node capability
-  // and CO provides this field then SP MUST ensure
-  // that the volume_mount_group parameter is passed
-  // as the group identifier to the underlying
-  // operating system mount system call, with the
-  // understanding that this would result in volume
-  // being readable(if published as readonly) or both
-  // readable and writable by said group identifier.
-  // The set of available mount call parameters
-  // and/or mount implementations may vary across
-  // operating systems.
+  // If SP has VOLUME_MOUNT_GROUP node capability and CO provides this
+  // field then SP MUST ensure that the volume_mount_group parameter
+  // is passed as the group identifier to the underlying operating
+  // system mount system call, with the understanding that this would
+  // result in volume being readable(if published as readonly) or both
+  // readable and writable by said group identifier. The set of
+  // available mount call parameters and/or mount implementations
+  // may vary across operating systems.
+  //
+  // Example 1:
+  //   volume_mount_group=8989
+  // Indicates that the volume should be mounted with group identifier
+  // 8989 and when combined with following mount flags, volume will
+  // become group readable/writable after node-stage/node-publish:
+  //   gid=8989,file_mode=0775,dir_mode=0775
   //
   // If Plugin does not support NodePublishVolume with different
   // volume_mount_group than the one used during NodeStageVolume
   // then Plugin MAY return FAILED_PRECONDITION error.
+  //
   // Similarly if SP does not support NodePublishVolume of same volume
   // on same node but with different volume_mount_group it MAY return
   // FAILED_PRECONDITION error.
